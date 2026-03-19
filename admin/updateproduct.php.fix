@@ -1,0 +1,177 @@
+<?php
+session_start();
+include "../connect.php";
+
+// check role
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../index.php");
+    exit;
+}
+
+// get id
+$product_id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0);
+
+if ($product_id <= 0) {
+    die("Invalid product ID.");
+}
+
+// get product details
+$sql = "SELECT * FROM products WHERE id = :id";
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':id' => $product_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        die("Product not found");
+    }
+} catch (PDOException $e) {
+    die("error: " . $e->getMessage());
+}
+
+// get categories for dropdown
+$categories = [];
+try {
+    $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo "error: " . $e->getMessage();
+}
+
+// update
+if (isset($_POST['submit'])) {
+    $name        = trim($_POST['name'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $price       = (float)($_POST['price'] ?? 0);
+    $stock       = (int)($_POST['stock'] ?? 0);
+    $category_name = trim($_POST['category_name'] ?? '');
+
+    // image handling
+    $image = $row['image'];
+    if (!empty($_FILES['image']['name'])) {
+        $new_image_name = basename($_FILES['image']['name']);
+        $upload_path    = "../image/" . $new_image_name;
+        if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
+            $image = $new_image_name;
+        } else {
+            $error = "image error";
+        }
+    }
+
+    if (empty($error)) {
+        $sql_update = "UPDATE products 
+                       SET name = :name, description = :description, price = :price, 
+                           stock = :stock, image = :image, category_name = :category_name 
+                       WHERE id = :id";
+
+        try {
+            $stmt_update = $pdo->prepare($sql_update);
+            $stmt_update->execute([
+                ':name'         => $name,
+                ':description'  => $description,
+                ':price'        => $price,
+                ':stock'        => $stock,
+                ':image'        => $image,
+                ':category_name' => $category_name,
+                ':id'           => $product_id
+            ]);
+
+            $_SESSION['success_msg'] = "Product updated successfully!";
+            header("Location: displayproduct.php");
+            exit;
+
+        } catch (PDOException $e) {
+            $error = "Error updating product: " . $e->getMessage();
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .dashboard_sidebar{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200px;
+            height: 100%;
+            background-color: gray;
+        }
+        .dashboard_sidebar ul li{
+            list-style: none;
+        }
+        .dashboard_sidebar ul li a{
+            text-decoration: none;
+            color: white;
+            display: block;
+            padding: 15px;
+        }
+        .dashboard_main{
+            margin-left: 200px;
+            padding: 20px;
+        }
+        .dashboard_main input{
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            width: 300px;
+        }
+        .dashboard_main select{
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            width: 320px;
+        }
+        .dashboard_main textarea{
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            width: 300px;
+            height: 100px;
+        }
+        .button{
+            padding: 10px 20px;
+            background-color: blue;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard_sidebar">
+        <ul>
+            <li><a href="addproduct.php">Add Product</a></li>
+            <li><a href="displayproduct.php">View Products</a></li>
+            <li><a href="../logout.php">Logout</a></li>
+        </ul>
+    </div>
+    <div class="dashboard_main">
+        <form action="updateproduct.php?product_id=<?php echo $row['id']; ?>" method="post" enctype="multipart/form-data">
+            <input type="text" name="name" value="<?php echo $row['name']; ?>">
+            <textarea name="description"><?php echo $row['description']; ?></textarea>
+            <input type="number" name="price" value="<?php echo $row['price']; ?>">
+            <input type="number" name="stock" value="<?php echo $row['stock']; ?>">
+            <img src="<?php echo $row['image']; ?>" alt="">
+            <input type="file" name="image">
+
+            <select name="category_name">
+                <option value="">Select Category</option>
+                <?php foreach($categories as $category): ?>
+                    <option value="<?php echo $category['name']; ?>" <?php echo ($category['name'] == $row['category_name']) ? 'selected' : ''; ?>>
+                        <?php echo $category['name']; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+
+            <input type="submit" name="submit" value="update product">
+        </form>
+    </div>
+</body>
+</html>
+
