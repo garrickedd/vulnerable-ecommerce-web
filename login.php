@@ -12,12 +12,12 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['email'])) {
 $message = '';
 
 if(isset($_POST['submit'])){
-    $email = $_POST['email'];
+    $name = $_POST['name'];
     $password = $_POST['password'];
     // echo $email;
     // echo $password;
 
-    $sql = "SELECT * FROM users WHERE email='$email' AND password='$password'";
+    $sql = "SELECT * FROM users WHERE name='$name' AND password='$password'";
 
     try {
         $stmt = $pdo->query($sql);
@@ -101,7 +101,7 @@ if(isset($_POST['submit'])){
 <a class="shoplink" href="index.php">Shop</a>
     <div class="login">
         <form action="login.php" method="post">
-            <input type="email" name="email" placeholder="Enter your Email here!" required>
+            <input type="name" name="name" placeholder="Enter your Name here!" required>
             <input type="password" name="password" placeholder="Enter your Password here!" required>
             <!-- <button type="submit" name="submit" value="login">Login</button> -->
             <input class="button" type="submit" name="submit" value="login">

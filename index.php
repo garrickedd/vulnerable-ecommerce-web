@@ -11,6 +11,27 @@ try {
 }
 
 
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+
+$sql = "SELECT * FROM products";
+$params = [];
+
+if (!empty($search)) {
+    $sql .= " WHERE name LIKE :search";
+    $params[':search'] = '%' . $search . '%';
+}
+
+$sql .= " ORDER BY id DESC";
+
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (\PDOException $e) {
+    echo "error " . htmlspecialchars($e->getMessage());
+    $products = [];
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -110,6 +131,10 @@ try {
         .footer p{
             text-align: center;
         }
+        .search-box{
+            text-align: center;
+            margin-bottom: 20px;
+        }
     </style>
     @media(max-width: 400px){
         .header{
@@ -138,6 +163,16 @@ try {
 
     </header>
     <main class="main">
+    <div class="search-box">
+        <form method="GET" action="index.php">
+            <input type="text" name="search" placeholder="Search products by name" 
+                value="<?= htmlspecialchars($search) ?>">
+            <button type="submit">Search</button>
+            <?php if (!empty($search)): ?>
+                <a href="index.php" style="margin-left:10px;">Delete search</a>
+            <?php endif; ?>
+        </form>
+    </div>
     <?php if (!empty($products)): ?>
         <?php foreach ($products as $product): ?>
             <div class="product">
